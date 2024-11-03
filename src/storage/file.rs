@@ -155,6 +155,7 @@ impl File for SysFile {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::storage::RandomAccessFile;
     use std::fs::remove_file;
     use std::io::Write;
 

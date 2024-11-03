@@ -22,7 +22,7 @@ use crate::options::{CompressionType, Options, ReadOptions};
 use crate::sstable::block::{Block, BlockBuilder, BlockIterator};
 use crate::sstable::filter_block::{FilterBlockBuilder, FilterBlockReader};
 use crate::sstable::{BlockHandle, Footer, BLOCK_TRAILER_SIZE, FOOTER_ENCODED_LENGTH};
-use crate::storage::File;
+use crate::storage::{File, RandomAccessFile};
 use crate::util::coding::{decode_fixed_32, put_fixed_32, put_fixed_64};
 use crate::util::comparator::Comparator;
 use crate::util::crc32::{extend, hash, mask, unmask};
@@ -34,7 +34,7 @@ use std::sync::Arc;
 /// A `Table` is a sorted map from strings to strings, which must be immutable and persistent.
 /// A `Table` may be safely accessed from multiple threads
 /// without external synchronization.
-pub struct Table<F: File> {
+pub struct Table<F: RandomAccessFile> {
     file: F,
     file_number: u64,
     filter_reader: Option<FilterBlockReader>,
@@ -43,7 +43,7 @@ pub struct Table<F: File> {
     block_cache: Option<Arc<dyn Cache<Vec<u8>, Arc<Block>>>>,
 }
 
-impl<F: File> Table<F> {
+impl<F: RandomAccessFile> Table<F> {
     /// Attempt to open the table that is stored in bytes `[0..size)`
     /// of `file`, and read the metadata entries necessary to allow
     /// retrieving data from the table.
@@ -215,13 +215,13 @@ impl<F: File> Table<F> {
     }
 }
 
-pub struct TableIterFactory<C: Comparator, F: File> {
+pub struct TableIterFactory<C: Comparator, F: RandomAccessFile> {
     options: ReadOptions,
     table: Arc<Table<F>>,
     cmp: C,
 }
 
-impl<C: Comparator, F: File> DerivedIterFactory for TableIterFactory<C, F> {
+impl<C: Comparator, F: RandomAccessFile> DerivedIterFactory for TableIterFactory<C, F> {
     type Iter = BlockIterator<C>;
     fn derive(&self, value: &[u8]) -> Result<Self::Iter> {
         BlockHandle::decode_from(value).and_then(|(handle, _)| {
@@ -239,7 +239,7 @@ pub type TableIterator<C, F> = ConcatenateIterator<BlockIterator<C>, TableIterFa
 /// Entry format:
 ///     key: internal key
 ///     value: value of user key
-pub fn new_table_iterator<C: Comparator, F: File>(
+pub fn new_table_iterator<C: Comparator, F: RandomAccessFile>(
     cmp: C,
     table: Arc<Table<F>>,
     options: ReadOptions,
@@ -567,7 +567,11 @@ fn write_raw_block<F: File>(
 
 // Read the block identified from `file` according to the given `handle`.
 // If the read data does not match the checksum, return a error marked as `Status::Corruption`
-fn read_block<F: File>(file: &F, handle: &BlockHandle, verify_checksum: bool) -> Result<Vec<u8>> {
+fn read_block<F: RandomAccessFile>(
+    file: &F,
+    handle: &BlockHandle,
+    verify_checksum: bool,
+) -> Result<Vec<u8>> {
     let n = handle.size as usize;
     // TODO: use pre-allocated buf
     let mut buffer = vec![0; n + BLOCK_TRAILER_SIZE];

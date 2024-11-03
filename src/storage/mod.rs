@@ -59,7 +59,7 @@ pub trait Storage: Send + Sync {
 }
 
 /// A file abstraction for IO operations
-pub trait File: Send + Sync {
+pub trait File: RandomAccessFile + Send + Sync {
     fn write(&mut self, buf: &[u8]) -> Result<usize>;
     fn flush(&mut self) -> Result<()>;
     fn close(&mut self) -> Result<()>;
@@ -88,7 +88,13 @@ pub trait File: Send + Sync {
     /// See [`Read::read()`](https://doc.rust-lang.org/std/io/trait.Read.html#tymethod.read)
     /// for details.
     fn read_at(&self, buf: &mut [u8], offset: u64) -> Result<usize>;
+}
 
+pub trait RandomAccessFile: Send + Sync {
+    fn read_exact_at(&self, buf: &mut [u8], offset: u64) -> Result<()>;
+}
+
+impl<T: File> RandomAccessFile for T {
     /// Reads the exact number of bytes required to fill `buf` from an `offset`.
     ///
     /// Errors if the "EOF" is encountered before filling the buffer.
