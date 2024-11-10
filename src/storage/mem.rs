@@ -146,6 +146,8 @@ fn clean<P: AsRef<Path>>(path: P) -> PathBuf {
 }
 
 impl Storage for MemStorage {
+    type RAF = FileNode;
+
     type F = FileNode;
 
     fn create<P: AsRef<Path>>(&self, name: P) -> Result<Self::F> {
@@ -196,6 +198,10 @@ impl Storage for MemStorage {
                 format!("{}: No such file", &path),
             ))),
         }
+    }
+
+    fn open_random_access_file<P: AsRef<Path>>(&self, name: P) -> Result<Self::RAF> {
+        self.open(name)
     }
 
     // Same as `remove_file`

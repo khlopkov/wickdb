@@ -1085,7 +1085,7 @@ impl<S: Storage + Clone, C: Comparator> FileIterFactory<S, C> {
 }
 
 impl<S: Storage + Clone, C: Comparator + 'static> DerivedIterFactory for FileIterFactory<S, C> {
-    type Iter = TableIterator<InternalKeyComparator<C>, S::F>;
+    type Iter = TableIterator<InternalKeyComparator<C>, S::RAF>;
 
     // The value is a bytes with fixed encoded file number and fixed encoded file size
     fn derive(&self, value: &[u8]) -> Result<Self::Iter> {
@@ -1113,7 +1113,7 @@ pub fn total_file_size(files: &[Arc<FileMetaData>]) -> u64 {
 pub struct SSTableIters<S: Storage + Clone, C: Comparator + 'static> {
     cmp: InternalKeyComparator<C>,
     // Level0 table iterators. One iterator for one sst file
-    level0: Vec<TableIterator<InternalKeyComparator<C>, S::F>>,
+    level0: Vec<TableIterator<InternalKeyComparator<C>, S::RAF>>,
     // ConcatenateIterators for opening SST in level n>1 lazily. One iterator for one level
     leveln: Vec<ConcatenateIterator<LevelFileNumIterator<C>, FileIterFactory<S, C>>>,
 }
@@ -1121,7 +1121,7 @@ pub struct SSTableIters<S: Storage + Clone, C: Comparator + 'static> {
 impl<S: Storage + Clone, C: Comparator> SSTableIters<S, C> {
     pub fn new(
         cmp: InternalKeyComparator<C>,
-        level0: Vec<TableIterator<InternalKeyComparator<C>, S::F>>,
+        level0: Vec<TableIterator<InternalKeyComparator<C>, S::RAF>>,
         leveln: Vec<ConcatenateIterator<LevelFileNumIterator<C>, FileIterFactory<S, C>>>,
     ) -> Self {
         Self {

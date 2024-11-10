@@ -18,6 +18,7 @@
 use crate::storage::{File, Storage};
 use crate::{Error, Result};
 use fs2::FileExt;
+use memmap::{Mmap, MmapOptions};
 use std::fs::{
     create_dir_all, read_dir, remove_dir, remove_dir_all, remove_file, rename, File as SysFile,
     OpenOptions,
@@ -29,6 +30,7 @@ use std::path::{Path, PathBuf};
 pub struct FileStorage;
 
 impl Storage for FileStorage {
+    type RAF = Mmap;
     type F = SysFile;
     fn create<P: AsRef<Path>>(&self, name: P) -> Result<Self::F> {
         match OpenOptions::new()
@@ -48,6 +50,14 @@ impl Storage for FileStorage {
             Ok(f) => Ok(f),
             Err(e) => Err(Error::IO(e)),
         }
+    }
+
+    fn open_random_access_file<P: AsRef<Path>>(&self, name: P) -> Result<Self::RAF> {
+        let file = match OpenOptions::new().write(false).read(true).open(name) {
+            Ok(f) => Ok(f),
+            Err(e) => Err(Error::IO(e)),
+        }?;
+        map_io_res!(unsafe { MmapOptions::new().map(&file) })
     }
 
     fn remove<P: AsRef<Path>>(&self, name: P) -> Result<()> {

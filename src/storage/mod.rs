@@ -17,6 +17,7 @@
 
 pub mod file;
 pub mod mem;
+pub mod mmap;
 
 use crate::{Error, Result};
 use std::io;
@@ -30,12 +31,16 @@ use std::path::{Path, PathBuf};
 ///
 /// `Storage` should be thread safe
 pub trait Storage: Send + Sync {
+    type RAF: RandomAccessFile + 'static;
     type F: File + 'static;
     /// Create a file if it does not exist and truncates exist one.
     fn create<P: AsRef<Path>>(&self, name: P) -> Result<Self::F>;
 
     /// Open a file for writing and reading
     fn open<P: AsRef<Path>>(&self, name: P) -> Result<Self::F>;
+
+    /// Open a file with random read access
+    fn open_random_access_file<P: AsRef<Path>>(&self, name: P) -> Result<Self::RAF>;
 
     /// Delete the named file
     fn remove<P: AsRef<Path>>(&self, name: P) -> Result<()>;

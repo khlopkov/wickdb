@@ -32,12 +32,12 @@ pub struct TableCache<S: Storage + Clone, C: Comparator> {
     db_path: String,
     options: Arc<Options<C>>,
     // the key is the file number
-    cache: Arc<dyn Cache<u64, Arc<Table<S::F>>>>,
+    cache: Arc<dyn Cache<u64, Arc<Table<S::RAF>>>>,
 }
 
 impl<S: Storage + Clone, C: Comparator + 'static> TableCache<S, C> {
     pub fn new(db_path: String, options: Arc<Options<C>>, size: usize, storage: S) -> Self {
-        let cache = Arc::new(LRUCache::<u64, Arc<Table<S::F>>>::new(size));
+        let cache = Arc::new(LRUCache::<u64, Arc<Table<S::RAF>>>::new(size));
         Self {
             storage,
             db_path,
@@ -52,12 +52,12 @@ impl<S: Storage + Clone, C: Comparator + 'static> TableCache<S, C> {
         cmp: TC,
         file_number: u64,
         file_size: u64,
-    ) -> Result<Arc<Table<S::F>>> {
+    ) -> Result<Arc<Table<S::RAF>>> {
         match self.cache.get(&file_number) {
             Some(v) => Ok(v),
             None => {
                 let filename = generate_filename(&self.db_path, FileType::Table, file_number);
-                let table_file = self.storage.open(&filename)?;
+                let table_file = self.storage.open_random_access_file(&filename)?;
                 let table = Table::open(
                     table_file,
                     file_number,
@@ -103,7 +103,7 @@ impl<S: Storage + Clone, C: Comparator + 'static> TableCache<S, C> {
         options: ReadOptions,
         file_number: u64,
         file_size: u64,
-    ) -> Result<TableIterator<TC, S::F>> {
+    ) -> Result<TableIterator<TC, S::RAF>> {
         let t = self.find_table(cmp.clone(), file_number, file_size)?;
         let iter = new_table_iterator(cmp, t, options);
         Ok(iter)
